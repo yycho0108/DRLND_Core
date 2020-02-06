@@ -2,7 +2,7 @@
 
 import numpy as np
 from collections import defaultdict
-from .base_agent import AgentBase
+from drlnd.core.agents.base_agent import AgentBase
 
 
 class Agent(AgentBase):

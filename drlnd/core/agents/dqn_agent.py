@@ -5,9 +5,9 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-from core.common.replay_buffer import ReplayBuffer
-from core.networks.simple_q_network import QNetwork
-from .base_agent import AgentBase
+from drlnd.core.common.replay_buffer import ReplayBuffer
+from drlnd.core.networks.simple_q_network import QNetwork
+from drlnd.core.agents.base_agent import AgentBase
 
 
 class DQNAgentSettings(object):

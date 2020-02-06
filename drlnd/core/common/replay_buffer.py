@@ -2,7 +2,8 @@
 
 import torch
 import numpy as np
-from .ring_buffer import ContiguousRingBuffer
+
+from drlnd.core.common.ring_buffer import ContiguousRingBuffer
 
 
 class ReplayBuffer:
