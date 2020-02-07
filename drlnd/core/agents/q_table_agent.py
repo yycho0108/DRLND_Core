@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 
+import os
 import numpy as np
 from enum import Enum
 from collections import defaultdict
@@ -10,7 +11,10 @@ import pickle
 from drlnd.core.agents.base_agent import AgentBase
 from drlnd.core.common.epsilon import EpsilonBase, IncrementalEpsilon
 from drlnd.core.common.util import lerp
-from drlnd.core.common.table import DictQTable, TiledQTable
+from drlnd.core.common.q_table import QTable, DictQTable, TiledQTable
+from drlnd.core.common.logger import get_default_logger
+
+logger = get_default_logger()
 
 
 class QControlMethod(Enum):
@@ -26,7 +30,7 @@ class QTableAgent(AgentBase):
                  control: QControlMethod = QControlMethod.kMethodSarsaExpect,
                  alpha: float = 0.1,
                  gamma: float = 1.0,
-                 Q: DictQTable = None
+                 Q: QTable = None
                  ):
         self.num_actions_ = num_actions
         if isinstance(epsilon, IncrementalEpsilon):
@@ -92,13 +96,17 @@ class QTableAgent(AgentBase):
         q_new = reward + self.gamma_ * q_next
         self.Q_.update(state, action, q_new, self.alpha_)
 
-    def save(self, filename='q.pkl'):
+    def save(self, path, filename='q.pkl'):
+        filename = os.path.join(path, filename)
         data = (self.num_actions_, self.eps_, self.ctrl_,
                 self.alpha_, self.gamma_, self.Q_)
+        logger.debug('Saving agent to {}'.format(filename))
         with open(filename, 'wb') as f:
             pickle.dump(data, f)
 
-    def load(self, filename='q.pkl'):
+    def load(self, path, filename='q.pkl'):
+        filename = os.path.join(path, filename)
+        logger.debug('Loading agent from {}'.format(filename))
         with open(filename, 'rb') as f:
             data = pickle.load(f)
         self.num_actions_, self.eps_, self.ctrl_, self.alpha_, self.gamma_, self.Q_ = data

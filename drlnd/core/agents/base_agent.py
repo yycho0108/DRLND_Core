@@ -39,3 +39,11 @@ class AgentBase(ABC):
         - done: whether the episode is complete (True or False)
         """
         raise NotImplementedError('Cannot call abstract method step')
+
+    @abstractmethod
+    def save(self, path=''):
+        raise NotImplementedError('Cannot call abstract method save')
+
+    @abstractmethod
+    def load(self, path=''):
+        raise NotImplementedError('Cannot call abstract method load')

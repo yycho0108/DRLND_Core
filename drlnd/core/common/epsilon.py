@@ -52,3 +52,15 @@ class ConstantEpsilon(object):
 
     def __call__(self, _):
         return self.value_
+
+class IncrementalEpsilon(EpsilonBase):
+    def __init__(self, eps):
+        self.eps_ = eps
+        self.index_ = 0
+
+    def increment_index(self):
+        self.index_ += 1
+
+    def __call__(self):
+        return self.eps_(self.index_)
+

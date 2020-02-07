@@ -5,7 +5,9 @@ from collections import defaultdict
 import numpy as np
 
 from drlnd.core.common.util import lerp
+from drlnd.core.common.logger import get_default_logger
 
+logger = get_default_logger()
 
 def create_tiling_grid(low, high, bins=(10, 10), offsets=(0.0, 0.0)):
     """Define a uniformly-spaced grid that can be used for tile-coding a space.
@@ -239,7 +241,7 @@ class TiledQTable(QTable):
         self.action_size = action_size
         self.q_tables = [NDArrayQTable(state_size, action_size)
                          for state_size in self.state_sizes]
-        print("TiledQTable(): no. of internal tables = ", len(self.q_tables))
+        logger.debug("TiledQTable(): no. of internal tables = {}".format(len(self.q_tables)))
 
     def has(self, state, action=None):
         return np.all([q_table.has(state, action) for q_table in self.q_tables])
