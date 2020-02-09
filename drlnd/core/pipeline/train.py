@@ -50,7 +50,8 @@ def train(env: gym.Env, agent: AgentBase, settings: TrainSettings):
     # eps = LinearEpsilon(0.8 * settings.num_episodes)
     eps = ExponentialEpsilon(0.99, 0.05, 0.8 * settings.num_episodes, True)
 
-    for i_episode in tqdm(range(settings.num_episodes)):
+    t = tqdm(range(settings.num_episodes))
+    for i_episode in t:
         # Initialize episode
         state = env.reset()
         total_reward = 0
@@ -69,6 +70,7 @@ def train(env: gym.Env, agent: AgentBase, settings: TrainSettings):
         # Save the final score.
         scores.append(total_reward)
 
+        t.set_postfix(score=np.mean(scores.array))
         # Optionally enable printing episode stats.
         if i_episode % settings.log_period == 0:
             # Compute statistics.
@@ -77,7 +79,7 @@ def train(env: gym.Env, agent: AgentBase, settings: TrainSettings):
                 max_avg_score = avg_score
 
             # Print statistics.
-            logger.info("Episode {}/{} | Max Average Score: {} | EPS : {}".format(
+            logger.info("Episode {}/{} | Max Avg: {:.2f} | Eps : {:.2f}".format(
                 i_episode, settings.num_episodes, max_avg_score, eps(i_episode)))
             # sys.stdout.flush()
 

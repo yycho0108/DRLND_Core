@@ -15,6 +15,8 @@ setup(name='drlnd',
           'cho-util',
           'numpy',
           'torch',
+          'tqdm',
+          'gym'
       ],
       classifiers=[
           'Programming Language :: Python :: 3',

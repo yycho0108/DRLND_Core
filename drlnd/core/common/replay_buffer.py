@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-import numba as nb
 import numpy as np
 
 from drlnd.core.common.ring_buffer import ContiguousRingBuffer
-from numpy_ringbuffer import RingBuffer as NumpyRingBuffer
 
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples."""
@@ -22,16 +20,17 @@ class ReplayBuffer:
         """
         self.action_size = action_size
 
+        # NOTE(yycho0108): "done" is technically boolean, but mapping here to uint8
+        # To support torch conversion (bool is not supported on certain versions.)
         self.dtype = np.dtype([
             ('state', np.float32, state_size),
             ('action', np.int32),
             ('reward', np.float32),
             ('next_state', np.float32, state_size),
-            ('done', np.bool)])
+            ('done', np.uint8)])
         # self.memory = {name : ContiguousRingBuffer(capacity=buffer_size, dtype=self.dtype.fields[name][0]) for name in  self.dtype.names}
         self.memory = ContiguousRingBuffer(
             capacity=buffer_size, dtype=self.dtype)
-        # self.memory = NumpyRingBuffer(capacity=buffer_size, dtype=self.dtype)
         self.batch_size = batch_size
         self.seed = np.random.seed(seed)
 

@@ -18,9 +18,9 @@ class DQNAgentSettings(dict):
         self.learning_rate = 5e-4   # learning rate
         self.update_period = 1    # how often to update the network
         # for soft update of target parameters
-        self.train_delay_step = 1000
+        self.train_delay_step = 10
         self.target_update_factor = 0.01
-        self.target_update_period = 500
+        self.target_update_period = 8
         self.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu")
         self.network = QNetwork
@@ -70,8 +70,8 @@ class DQNAgent(AgentBase):
         self.memory.add(state, action, reward, next_state, done)
 
         # Learn every UPDATE_EVERY time steps.
-        self.t_step = (self.t_step + 1) % self.settings.update_period
-        if self.t_step == 0:
+        self.t_step += 1
+        if self.t_step % self.settings.update_period == 0:
             # If enough samples are available in memory, get random subset and learn
             if len(self.memory) > self.settings.batch_size:
                 experiences = self.memory.sample()
@@ -120,15 +120,17 @@ class DQNAgent(AgentBase):
         Q_local = self.qnetwork_local(states).gather(
             1, actions.long().unsqueeze(1))
 
-        # loss = F.mse_loss(Q_local, Q_target)
-        loss = F.smooth_l1_loss(Q_local, Q_target)
+        loss = F.mse_loss(Q_local, Q_target)
+        # loss = F.smooth_l1_loss(Q_local, Q_target)
         # Minimize the loss
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
         # ------------------- update target network ------------------- #
-        if self.t_step > self.settings.train_delay_step and self.t_step % self.settings.target_update_period == 0:
+        c0 = (self.t_step > self.settings.train_delay_step)
+        c1 = ((self.t_step % self.settings.target_update_period) == 0)
+        if c0 and c1:
             self.soft_update(self.qnetwork_local,
                              self.qnetwork_target, self.settings.target_update_factor)
 

@@ -51,7 +51,7 @@ def test(env: gym.Env, agent: AgentBase, settings: TestSettings):
             total_reward += reward
             state = next_state
             time.sleep(settings.time_step)
-            logger.info('{}'.format(step))
+            logger.debug('{}:{}'.format(step, action))
             step += 1
 
     return scores
