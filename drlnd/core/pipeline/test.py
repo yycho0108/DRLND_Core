@@ -21,7 +21,8 @@ class TestSettings(dict):
         self.num_episodes = 16
         self.directory = '/tmp/'
         self.render = True
-        self.time_step = 0.01
+        self.fps = 100.0
+        self.enabled = True
         self.__dict__.update(kwargs)
         dict.__init__(self, self.__dict__)
 
@@ -34,6 +35,7 @@ class TestSettings(dict):
 
 def test(env: gym.Env, agent: AgentBase, settings: TestSettings):
     # Initialize variables for logging.
+    agent.load(settings.directory)
     scores = ContiguousRingBuffer(capacity=128)
     for i_episode in tqdm(range(settings.num_episodes)):
         # Initialize episode
@@ -50,7 +52,7 @@ def test(env: gym.Env, agent: AgentBase, settings: TestSettings):
             next_state, reward, done, _ = env.step(action)
             total_reward += reward
             state = next_state
-            time.sleep(settings.time_step)
+            time.sleep(1.0 / settings.fps)
             logger.debug('{}:{}'.format(step, action))
             step += 1
 

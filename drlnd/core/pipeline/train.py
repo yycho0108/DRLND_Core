@@ -13,16 +13,20 @@ from drlnd.core.common.ring_buffer import ContiguousRingBuffer
 from drlnd.core.common.logger import get_default_logger
 from drlnd.core.common.epsilon import ExponentialEpsilon, LinearEpsilon
 
+# from baselines.common.vec_env import SubprocVecEnv
+
 logger = get_default_logger()
 
 
 class TrainSettings(dict):
     def __init__(self, **kwargs):
         now = time.strftime("%Y%m%d-%H%M%S")
-
         self.num_episodes = 1000
         self.log_period = 100
+        self.save_period = 100
         self.directory = '/tmp/train-{}'.format(now)
+        self.enabled = True
+        self.load = ''
         self.__dict__.update(kwargs)
         dict.__init__(self, self.__dict__)
 
@@ -46,6 +50,9 @@ def train(env: gym.Env, agent: AgentBase, settings: TrainSettings):
     # Initialize variables for logging.
     scores = ContiguousRingBuffer(capacity=128)
     max_avg_score = -np.inf
+
+    if settings.load:
+        agent.load(settings.load)
 
     # eps = LinearEpsilon(0.8 * settings.num_episodes)
     eps = ExponentialEpsilon(0.99, 0.05, 0.8 * settings.num_episodes, True)
@@ -83,9 +90,11 @@ def train(env: gym.Env, agent: AgentBase, settings: TrainSettings):
                 i_episode, settings.num_episodes, max_avg_score, eps(i_episode)))
             # sys.stdout.flush()
 
+        if i_episode % settings.save_period == 0:
+            agent.save(settings.directory, i_episode)
+
     # Save results.
     os.makedirs(settings.directory, exist_ok=True)
     agent.save(settings.directory)
-    settings.save(settings.directory)
 
     return scores

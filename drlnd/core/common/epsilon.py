@@ -28,7 +28,7 @@ class ExponentialEpsilon(object):
         self.n_ = n
         self.clip_ = clip
 
-        self.decay_ = (eps1 / eps0) ** (1.0 / n)
+        self.decay_ = (eps1 / eps0) ** (1.0 / n) if n > 0 else 0
 
     def __call__(self, i):
         if self.clip_ and i >= self.n_:

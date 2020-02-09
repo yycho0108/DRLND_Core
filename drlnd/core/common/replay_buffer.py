@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import contextlib
 import numpy as np
 
 from drlnd.core.common.ring_buffer import ContiguousRingBuffer
+
 
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples."""
@@ -32,8 +34,9 @@ class ReplayBuffer:
         self.memory = ContiguousRingBuffer(
             capacity=buffer_size, dtype=self.dtype)
         self.batch_size = batch_size
-        self.seed = np.random.seed(seed)
 
+        # Manipulate random engine.
+        self.rng = np.random.RandomState(seed)
         self.nadd = 0
         self.nquery = 0
 
@@ -49,7 +52,7 @@ class ReplayBuffer:
     def sample(self, indices=None):
         """Randomly sample a batch of experiences from memory."""
         if indices is None:
-            indices = np.random.randint(len(self.memory), size=self.batch_size)
+            indices = self.rng.randint(len(self.memory), size=self.batch_size)
 
         # NOTE(yycho0108): It is much more favorable to index by name first here,
         # to prevent creation of multiple copies since the output must ultimately be contiguous.

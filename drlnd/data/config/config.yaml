@@ -1,0 +1,22 @@
+hydra:
+    run:
+        dir: "/tmp/drlnd/${now:%Y-%m-%d_%H-%M-%S}"
+
+defaults:
+    - agent: dqn-agent # Agent
+
+env: "CartPole-v1"
+
+train:
+    num_episodes : 10000
+    directory    : "/tmp/drlnd/${now:%Y-%m-%d_%H-%M-%S}"
+    log_period   : 100
+    enabled      : True
+    load         : ""
+
+test:
+    num_episodes : 1
+    directory    : "/tmp/drlnd/${now:%Y-%m-%d_%H-%M-%S}"
+    render       : True
+    fps          : 100
+    enabled      : True

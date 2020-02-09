@@ -36,7 +36,8 @@ class QNetwork(nn.Module):
             seed (int): Random seed
         """
         super(QNetwork, self).__init__()
-        self.seed = torch.manual_seed(seed)
+        if seed is not None:
+            self.seed = torch.manual_seed(seed)
 
         self.net = nn.Sequential(OrderedDict([
             ('fc1', LinearRelu(np.prod(state_size), 256)),

@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+import os
+from pathlib import Path
 import numpy as np
 import random
 
@@ -5,9 +9,12 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
+from drlnd.core.common.logger import get_default_logger
 from drlnd.core.common.replay_buffer import ReplayBuffer
 from drlnd.core.networks.simple_q_network import QNetwork
 from drlnd.core.agents.base_agent import AgentBase
+
+logger = get_default_logger()
 
 
 class DQNAgentSettings(dict):
@@ -21,9 +28,9 @@ class DQNAgentSettings(dict):
         self.train_delay_step = 10
         self.target_update_factor = 0.01
         self.target_update_period = 8
-        self.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.network = QNetwork
+        self.seed = None
         self.__dict__.update(kwargs)
         dict.__init__(self, self.__dict__)
 
@@ -37,7 +44,7 @@ class DQNAgentSettings(dict):
 class DQNAgent(AgentBase):
     """Interacts with and learns from the environment."""
 
-    def __init__(self, state_size, action_size, settings=DQNAgentSettings(), seed=0):
+    def __init__(self, state_size, action_size, settings=DQNAgentSettings()):
         """Initialize an Agent object.
 
         Params
@@ -48,20 +55,21 @@ class DQNAgent(AgentBase):
         """
         self.state_size = state_size
         self.action_size = action_size
-        self.seed = random.seed(seed)
+        self.seed = settings.seed
+        random.seed(settings.seed)
         self.settings = settings
 
         # Q-Network
         self.qnetwork_local = settings.network(
-            state_size, action_size, seed).to(self.settings.device)
+            state_size, action_size, settings.seed).to(self.settings.device)
         self.qnetwork_target = settings.network(
-            state_size, action_size, seed).to(self.settings.device)
+            state_size, action_size, settings.seed).to(self.settings.device)
         self.optimizer = optim.Adam(
             self.qnetwork_local.parameters(), lr=self.settings.learning_rate)
 
         # Replay memory
         self.memory = ReplayBuffer(
-            state_size, action_size, settings.buffer_size, settings.batch_size, seed)
+            state_size, action_size, settings.buffer_size, settings.batch_size, settings.seed)
         # Initialize time step (for updating every UPDATE_EVERY steps)
         self.t_step = 0
 
@@ -72,12 +80,13 @@ class DQNAgent(AgentBase):
         # Learn every UPDATE_EVERY time steps.
         self.t_step += 1
         if self.t_step % self.settings.update_period == 0:
-            # If enough samples are available in memory, get random subset and learn
-            if len(self.memory) > self.settings.batch_size:
-                experiences = self.memory.sample()
-                experiences = [torch.from_numpy(e).to(
-                    self.settings.device) for e in experiences]
-                self.learn(experiences, self.settings.gamma)
+            # Skip learning if insufficient memory size.
+            if len(self.memory) < self.settings.batch_size:
+                return
+            experiences = self.memory.sample()
+            experiences = [torch.from_numpy(e).to(
+                self.settings.device) for e in experiences]
+            self.learn(experiences, self.settings.gamma)
 
     def select_action(self, state, eps=0.):
         """Returns actions for given state as per current policy.
@@ -148,11 +157,27 @@ class DQNAgent(AgentBase):
             target_param.data.copy_(
                 tau*local_param.data + (1.0-tau)*target_param.data)
 
-    def load(self, path=''):
-        filename = '{}/checkpoint.pth'.format(path)
+    @staticmethod
+    def _get_checkpoint(path, i=None, search=False):
+        # Try with default first.
+        if i is None:
+            filename = '{}/checkpoint.pth'.format(path)
+        else:
+            filename = '{}/checkpoint-{}.pth'.format(path, i)
+
+        # Optionally, fallback to search directory for any available checkpoint file.
+        if not Path(filename).exists() and search:
+            files = Path(path).glob('**/*.pth')
+            filename = sorted(files, key=os.path.getmtime)[-1]
+            logger.info('Fallback to loading from : {}'.format(filename))
+
+        return filename
+
+    def load(self, path='', i=None):
+        filename = self._get_checkpoint(path, i, search=True)
         state_dict = torch.load(filename)
         self.qnetwork_local.load_state_dict(state_dict)
 
-    def save(self, path=''):
-        filename = '{}/checkpoint.pth'.format(path)
+    def save(self, path='', i=None):
+        filename = self._get_checkpoint(path, i, search=False)
         torch.save(self.qnetwork_local.state_dict(), filename)
