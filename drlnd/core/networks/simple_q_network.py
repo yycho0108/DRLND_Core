@@ -2,6 +2,8 @@
 
 from collections import OrderedDict
 
+import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -10,6 +12,11 @@ import torch.nn.functional as F
 class LinearRelu(nn.Module):
     def __init__(self, D_in, D_out):
         super().__init__()
+
+        # Ensure 1D input/output.
+        #D_in = np.prod(D_in)
+        #D_out = np.prod(D_out)
+
         self.linear = torch.nn.Linear(D_in, D_out)
         self.relu = torch.nn.ReLU()
 
@@ -32,13 +39,9 @@ class QNetwork(nn.Module):
         self.seed = torch.manual_seed(seed)
 
         self.net = nn.Sequential(OrderedDict([
-            ('fc1', LinearRelu(state_size, 64)),
-            ('fc2', LinearRelu(64, 32)),
-            ('fc2', LinearRelu(32, 16)),
-            ('fc3', nn.Linear(16, action_size))
+            ('fc1', LinearRelu(np.prod(state_size), 256)),
+            ('fc2', nn.Linear(256, action_size))
         ]))
-
-        "*** YOUR CODE HERE ***"
 
     def forward(self, state):
         """Build a network that maps state -> action values."""

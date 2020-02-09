@@ -11,11 +11,12 @@ from tqdm import tqdm
 from drlnd.core.agents.base_agent import AgentBase
 from drlnd.core.common.ring_buffer import ContiguousRingBuffer
 from drlnd.core.common.logger import get_default_logger
+from drlnd.core.common.epsilon import ExponentialEpsilon, LinearEpsilon
 
 logger = get_default_logger()
 
 
-class TrainSettings(object):
+class TrainSettings(dict):
     def __init__(self, **kwargs):
         now = time.strftime("%Y%m%d-%H%M%S")
 
@@ -23,6 +24,8 @@ class TrainSettings(object):
         self.log_period = 100
         self.directory = '/tmp/train-{}'.format(now)
         self.train = True
+        self.__dict__.update(kwargs)
+        dict.__init__(self, self.__dict__)
 
     def save(self, directory=None):
         if directory is None:
@@ -31,13 +34,22 @@ class TrainSettings(object):
         filename = os.path.join(directory, 'settings.json')
         logger.debug('Saving to : {}'.format(filename))
         with open(filename, 'w') as f:
-            json.dump(self.__dict__, f)
+            json.dump({k: str(v) for k, v in self.__dict__.items()}, f)
+
+    def __str__(self):
+        return self.__dict__.__str__()
+
+    def __repr__(self):
+        return self.__dict__.__repr__()
 
 
 def pipeline(env: gym.Env, agent: AgentBase, settings: TrainSettings):
     # Initialize variables for logging.
     scores = ContiguousRingBuffer(capacity=128)
     max_avg_score = -np.inf
+
+    # eps = LinearEpsilon(0.8 * settings.num_episodes)
+    eps = ExponentialEpsilon(0.99, 0.05, 0.8 * settings.num_episodes, True)
 
     for i_episode in tqdm(range(settings.num_episodes)):
         # Initialize episode
@@ -47,7 +59,7 @@ def pipeline(env: gym.Env, agent: AgentBase, settings: TrainSettings):
         # Interact with the environment until done.
         done = False
         while not done:
-            action = agent.select_action(state)
+            action = agent.select_action(state, eps(i_episode))
             next_state, reward, done, _ = env.step(action)
             if settings.train:
                 agent.step(state, action, reward, next_state, done)
@@ -66,8 +78,8 @@ def pipeline(env: gym.Env, agent: AgentBase, settings: TrainSettings):
                     max_avg_score = avg_score
 
                 # Print statistics.
-                logger.info("Episode {}/{} | Max Average Score: {}".format(
-                    i_episode, settings.num_episodes, max_avg_score))
+                logger.info("Episode {}/{} | Max Average Score: {} | EPS : {}".format(
+                    i_episode, settings.num_episodes, max_avg_score, eps(i_episode)))
                 # sys.stdout.flush()
 
     # Save results.

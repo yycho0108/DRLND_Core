@@ -42,7 +42,7 @@ class LinearEpsilon(object):
         self.n_ = n
 
     def __call__(self, i):
-        return 1.0 - (i / float(n))
+        return 1.0 - (i / float(self.n_))
 
 
 class ConstantEpsilon(object):
@@ -52,6 +52,7 @@ class ConstantEpsilon(object):
 
     def __call__(self, _):
         return self.value_
+
 
 class IncrementalEpsilon(EpsilonBase):
     def __init__(self, eps):
@@ -63,4 +64,3 @@ class IncrementalEpsilon(EpsilonBase):
 
     def __call__(self):
         return self.eps_(self.index_)
-
