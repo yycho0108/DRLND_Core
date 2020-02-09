@@ -23,7 +23,6 @@ class TrainSettings(dict):
         self.num_episodes = 1000
         self.log_period = 100
         self.directory = '/tmp/train-{}'.format(now)
-        self.train = True
         self.__dict__.update(kwargs)
         dict.__init__(self, self.__dict__)
 
@@ -43,7 +42,7 @@ class TrainSettings(dict):
         return self.__dict__.__repr__()
 
 
-def pipeline(env: gym.Env, agent: AgentBase, settings: TrainSettings):
+def train(env: gym.Env, agent: AgentBase, settings: TrainSettings):
     # Initialize variables for logging.
     scores = ContiguousRingBuffer(capacity=128)
     max_avg_score = -np.inf
@@ -61,8 +60,9 @@ def pipeline(env: gym.Env, agent: AgentBase, settings: TrainSettings):
         while not done:
             action = agent.select_action(state, eps(i_episode))
             next_state, reward, done, _ = env.step(action)
-            if settings.train:
-                agent.step(state, action, reward, next_state, done)
+            # NOTE(yycho0108): agent.step() traines the agent
+            # FIXME(yycho0108): rename?
+            agent.step(state, action, reward, next_state, done)
             total_reward += reward
             state = next_state
 
@@ -70,17 +70,16 @@ def pipeline(env: gym.Env, agent: AgentBase, settings: TrainSettings):
         scores.append(total_reward)
 
         # Optionally enable printing episode stats.
-        if settings.train:
-            if i_episode % settings.log_period == 0:
-                # Compute statistics.
-                avg_score = np.mean(scores.array)
-                if avg_score > max_avg_score:
-                    max_avg_score = avg_score
+        if i_episode % settings.log_period == 0:
+            # Compute statistics.
+            avg_score = np.mean(scores.array)
+            if avg_score > max_avg_score:
+                max_avg_score = avg_score
 
-                # Print statistics.
-                logger.info("Episode {}/{} | Max Average Score: {} | EPS : {}".format(
-                    i_episode, settings.num_episodes, max_avg_score, eps(i_episode)))
-                # sys.stdout.flush()
+            # Print statistics.
+            logger.info("Episode {}/{} | Max Average Score: {} | EPS : {}".format(
+                i_episode, settings.num_episodes, max_avg_score, eps(i_episode)))
+            # sys.stdout.flush()
 
     # Save results.
     os.makedirs(settings.directory, exist_ok=True)
