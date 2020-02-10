@@ -16,7 +16,8 @@ setup(name='drlnd',
           'numpy',
           'torch',
           'tqdm',
-          'gym'
+          'gym',
+          'hydra-core',
       ],
       classifiers=[
           'Programming Language :: Python :: 3',

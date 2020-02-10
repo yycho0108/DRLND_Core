@@ -6,8 +6,9 @@ import time
 import gym
 import json
 import sys
-from tqdm import tqdm
+from tqdm import tqdm, tnrange
 
+from drlnd.core.common.util import is_notebook
 from drlnd.core.agents.base_agent import AgentBase
 from drlnd.core.common.ring_buffer import ContiguousRingBuffer
 from drlnd.core.common.logger import get_default_logger
@@ -45,10 +46,15 @@ def train(env: gym.Env, agent: AgentBase, settings: TrainSettings):
     if settings.load:
         agent.load(settings.load)
 
+    # FIXME(yycho0108): EPS should be configurable.
     # eps = LinearEpsilon(0.8 * settings.num_episodes)
     eps = ExponentialEpsilon(0.99, 0.05, 0.8 * settings.num_episodes, True)
 
-    t = tqdm(range(settings.num_episodes))
+    if is_notebook():
+        t = tnrange(settings.num_episodes)
+    else:
+        t = tqdm(range(settings.num_episodes))
+
     for i_episode in t:
         # Initialize episode
         state = env.reset()

@@ -1,0 +1,20 @@
+env: "Banana.x86_64"
+
+agent:
+    params:
+        gamma: 0.99
+        learning_rate: 0.001
+
+train:
+    num_episodes : 1800
+    directory    : "."
+    log_period   : 100
+    enabled      : True
+    load         : ""
+
+test:
+    num_episodes : 1
+    directory    : "."
+    render       : False # False, due to lack of proper support from library
+    fps          : 100
+    enabled      : True
