@@ -5,14 +5,15 @@ from pathlib import Path
 import numpy as np
 import random
 
+import hydra
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
 from drlnd.core.common.logger import get_default_logger
 from drlnd.core.common.replay_buffer import ReplayBuffer
-from drlnd.core.networks.simple_q_network import QNetwork
 from drlnd.core.agents.base_agent import AgentBase
+# from drlnd.core.common.util import import_class
 
 logger = get_default_logger()
 
@@ -29,7 +30,7 @@ class DQNAgentSettings(dict):
         self.target_update_factor = 0.01
         self.target_update_period = 8
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        self.network = QNetwork
+        self.network = {'class': 'drlnd.core.networks.mlp.QNetworkMLP'}
         self.seed = None
         self.__dict__.update(kwargs)
         dict.__init__(self, self.__dict__)
@@ -44,7 +45,7 @@ class DQNAgentSettings(dict):
 class DQNAgent(AgentBase):
     """Interacts with and learns from the environment."""
 
-    def __init__(self, state_size, action_size, settings=DQNAgentSettings()):
+    def __init__(self, state_size, action_size, **kwargs):
         """Initialize an Agent object.
 
         Params
@@ -55,21 +56,23 @@ class DQNAgent(AgentBase):
         """
         self.state_size = state_size
         self.action_size = action_size
-        self.seed = settings.seed
-        random.seed(settings.seed)
-        self.settings = settings
+        self.settings = DQNAgentSettings(**kwargs)
+        self.seed = self.settings.seed
+        random.seed(self.seed)
 
         # Q-Network
-        self.qnetwork_local = settings.network(
-            state_size, action_size, settings.seed).to(self.settings.device)
-        self.qnetwork_target = settings.network(
-            state_size, action_size, settings.seed).to(self.settings.device)
+        logger.debug('Settings : {}'.format(self.settings))
+        logger.debug('Loading Network as : {}'.format(self.settings.network))
+        self.qnetwork_local = hydra.utils.instantiate(self.settings.network, state_size, action_size).to(
+            self.settings.device)
+        self.qnetwork_target = hydra.utils.instantiate(self.settings.network, state_size, action_size).to(
+            self.settings.device)
         self.optimizer = optim.Adam(
             self.qnetwork_local.parameters(), lr=self.settings.learning_rate)
 
         # Replay memory
         self.memory = ReplayBuffer(
-            state_size, action_size, settings.buffer_size, settings.batch_size, settings.seed)
+            state_size, action_size, int(self.settings.buffer_size), self.settings.batch_size, self.settings.seed)
         # Initialize time step (for updating every UPDATE_EVERY steps)
         self.t_step = 0
 

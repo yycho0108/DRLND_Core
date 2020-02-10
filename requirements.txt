@@ -1,4 +1,6 @@
-tqdm==4.41.1
-torch==1.3.1
-numpy==1.17.4
-gym==0.13.1
+tqdm
+numpy
+gym
+hydra_core
+torch
+hydra

@@ -1,0 +1,6 @@
+network:
+    class : drlnd.core.networks.mlp.QNetworkMLP
+    params:
+        name : "MLP"
+        seed : 0
+        hidden : [256]

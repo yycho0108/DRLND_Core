@@ -1,16 +1,14 @@
-defaults:
-    - network : "QNetwork"
-
 agent:
-    name       :          "DQN"
-    class:          "drlnd.core.agents.dqn_agent.DQNAgent"
-    buffer_size:          5e4  # replay buffer size
-    batch_size:           32        # minibatch size
-    gamma:                1.0           # discount factor
-    learning_rate:        5e-4   # learning rate
-    update_period:        1    # how often to update the network
-    train_delay_step:     10
-    target_update_factor: 0.01
-    target_update_period: 8
-    device:               "cuda:0"
-    network:              "QNetwork"
+    class: "drlnd.core.agents.dqn_agent.DQNAgent"
+    params:
+        name                 : "DQN"
+        buffer_size          : 5e4  # replay buffer size
+        batch_size           : 32   # minibatch size
+        gamma                : 1.0  # discount factor
+        learning_rate        : 5e-4 # learning rate
+        update_period        : 1    # how often to update the network
+        train_delay_step     : 10
+        target_update_factor : 0.01
+        target_update_period : 8
+        device               : "cuda:0"
+        network              : "${network}"

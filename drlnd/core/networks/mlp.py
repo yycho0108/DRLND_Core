@@ -24,26 +24,34 @@ class LinearRelu(nn.Module):
         return self.relu(self.linear(x))
 
 
-class QNetwork(nn.Module):
+class QNetworkMLP(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, seed):
+    def __init__(self, state_size, action_size, hidden=[], seed=0, name='mlp'):
         """Initialize parameters and build model.
         Params
         ======
             state_size (int): Dimension of each state
             action_size (int): Dimension of each action
-            seed (int): Random seed
+            hidden (list(int)): Dimensions of intermediate layers.
+            seed (int): Random seed for weight initialization.
         """
-        super(QNetwork, self).__init__()
+        super().__init__()
+        self.name = name
+
         if seed is not None:
             self.seed = torch.manual_seed(seed)
 
-        self.net = nn.Sequential(OrderedDict([
-            ('fc1', LinearRelu(np.prod(state_size), 256)),
-            ('fc2', nn.Linear(256, action_size))
-        ]))
+        dimensions = [np.prod(state_size)] + list(hidden)  # + [action_size]
+        self.net = nn.ModuleList()
+        for lhs, rhs in zip(dimensions[:-1], dimensions[1:]):
+            self.net.append(LinearRelu(lhs, rhs))
+        # Add final layer for classification.
+        self.net.append(nn.Linear(hidden[-1], action_size))
 
     def forward(self, state):
         """Build a network that maps state -> action values."""
-        return self.net(state)
+        x = state
+        for i, l in enumerate(self.net):
+            x = self.net[i](x)
+        return x

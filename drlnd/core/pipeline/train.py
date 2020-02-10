@@ -30,15 +30,6 @@ class TrainSettings(dict):
         self.__dict__.update(kwargs)
         dict.__init__(self, self.__dict__)
 
-    def save(self, directory=None):
-        if directory is None:
-            directory = self.directory
-        os.makedirs(directory, exist_ok=True)
-        filename = os.path.join(directory, 'settings.json')
-        logger.debug('Saving to : {}'.format(filename))
-        with open(filename, 'w') as f:
-            json.dump({k: str(v) for k, v in self.__dict__.items()}, f)
-
     def __str__(self):
         return self.__dict__.__str__()
 

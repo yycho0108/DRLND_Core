@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import gym
 import hydra
 import logging
@@ -8,6 +9,7 @@ from drlnd.core.pipeline.test import (TestSettings, test)
 from drlnd.core.pipeline.train import (TrainSettings, train)
 from drlnd.core.common.logger import get_root_logger
 from drlnd.core.common.path import get_project_root, get_config_file
+from drlnd.core.common.util import import_class
 
 
 @hydra.main(config_path=get_config_file())
@@ -20,13 +22,14 @@ def main(cfg) -> None:
 
     if cfg.train.enabled:
         train_settings = TrainSettings(**cfg.train)
-        logger.info('Train Settings : {}'.format(train_settings))
+        logger.info(train_settings)
         train(env, agent, train_settings)
 
     if cfg.test.enabled:
         test_settings = TestSettings(**cfg.test)
-        logger.info('Test Settings : {}'.format(test_settings))
+        logger.info(test_settings)
         test(env, agent, test_settings)
+
     env.close()
 
 
