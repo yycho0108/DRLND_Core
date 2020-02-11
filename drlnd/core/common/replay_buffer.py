@@ -49,6 +49,19 @@ class ReplayBuffer:
         self.memory.append(entry)
         self.nadd += 1
 
+    def extend(self, state, action, reward, next_state, done):
+        """Add a new experience to memory."""
+        # for name in self.dtype.names:
+        #    self.memory[name].append(locals()[name])
+        entry = np.empty(len(state), dtype=self.dtype)
+        entry['state'] = state
+        entry['action'] = action
+        entry['reward'] = reward
+        entry['next_state'] = next_state
+        entry['done'] = done
+        self.memory.extend(entry)
+        self.nadd += len(state)
+
     def sample(self, indices=None):
         """Randomly sample a batch of experiences from memory."""
         if indices is None:

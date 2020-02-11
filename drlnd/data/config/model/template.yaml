@@ -1,6 +1,7 @@
 env: ???
 
 train:
+    num_env      : 1
     num_episodes : 1
     directory    : "."
     log_period   : 1

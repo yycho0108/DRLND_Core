@@ -11,7 +11,7 @@ from tqdm import tqdm
 from drlnd.core.agents.base_agent import AgentBase
 from drlnd.core.common.ring_buffer import ContiguousRingBuffer
 from drlnd.core.common.logger import get_default_logger
-from drlnd.core.common.epsilon import ExponentialEpsilon, LinearEpsilon
+from drlnd.core.common.epsilon import ConstantEpsilon
 
 logger = get_default_logger()
 
@@ -35,8 +35,9 @@ class TestSettings(dict):
 
 def test(env: gym.Env, agent: AgentBase, settings: TestSettings):
     # Initialize variables for logging.
-    agent.load(settings.directory)
+    # agent.load(settings.directory)
     scores = ContiguousRingBuffer(capacity=128)
+    eps = ConstantEpsilon(0.01)
     for i_episode in tqdm(range(settings.num_episodes)):
         # Initialize episode
         state = env.reset()
@@ -46,7 +47,7 @@ def test(env: gym.Env, agent: AgentBase, settings: TestSettings):
         done = False
         step = 0
         while not done:
-            action = agent.select_action(state)
+            action = agent.select_action(state, eps(i_episode))
             if settings.render:
                 env.render()
             next_state, reward, done, _ = env.step(action)
@@ -56,4 +57,6 @@ def test(env: gym.Env, agent: AgentBase, settings: TestSettings):
             logger.debug('{}:{}'.format(step, action))
             step += 1
 
+        # Save the final score.
+        scores.append(total_reward)
     return scores

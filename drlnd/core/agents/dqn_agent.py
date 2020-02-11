@@ -78,7 +78,11 @@ class DQNAgent(AgentBase):
 
     def step(self, state, action, reward, next_state, done):
         # Save experience in replay memory
-        self.memory.add(state, action, reward, next_state, done)
+        batch_dim = state.shape[:-len(self.state_size)]
+        if len(batch_dim) == 0:
+            self.memory.add(state, action, reward, next_state, done)
+        else:
+            self.memory.extend(state, action, reward, next_state, done)
 
         # Learn every UPDATE_EVERY time steps.
         self.t_step += 1
@@ -99,18 +103,23 @@ class DQNAgent(AgentBase):
             state (array_like): current state
             eps (float): epsilon, for epsilon-greedy action selection
         """
-        state = torch.from_numpy(state).float().unsqueeze(
-            0).to(self.settings.device)
+        batch_dim = state.shape[:-len(self.state_size)]
+        state = torch.from_numpy(state).float().to(self.settings.device)
+        if len(batch_dim) == 0:
+            state = state.unsqueeze(0)
         self.qnetwork_local.eval()
         with torch.no_grad():
             action_values = self.qnetwork_local(state)
         self.qnetwork_local.train()
 
         # Epsilon-greedy action selection
-        if random.random() > eps:
-            return np.argmax(action_values.cpu().data.numpy())
-        else:
-            return random.choice(np.arange(self.action_size))
+        p = np.random.uniform(0.0, 1.0, size=batch_dim)
+        action = np.where(p > eps,
+                          np.argmax(action_values.cpu().data.numpy(), axis=-1),
+                          np.random.choice(self.action_size, size=batch_dim))
+        if len(batch_dim) == 0:
+            action = np.squeeze(action, 0)
+        return action
 
     def learn(self, experiences, gamma):
         """Update value parameters using given batch of experience tuples.
@@ -132,8 +141,8 @@ class DQNAgent(AgentBase):
         Q_local = self.qnetwork_local(states).gather(
             1, actions.long().unsqueeze(1))
 
-        loss = F.mse_loss(Q_local, Q_target)
-        # loss = F.smooth_l1_loss(Q_local, Q_target)
+        # loss = F.mse_loss(Q_local, Q_target)
+        loss = F.smooth_l1_loss(Q_local, Q_target)
         # Minimize the loss
         self.optimizer.zero_grad()
         loss.backward()
@@ -179,8 +188,10 @@ class DQNAgent(AgentBase):
     def load(self, path='', i=None):
         filename = self._get_checkpoint(path, i, search=True)
         state_dict = torch.load(filename)
+        logger.info('Agent loading from : {}'.format(filename))
         self.qnetwork_local.load_state_dict(state_dict)
 
     def save(self, path='', i=None):
         filename = self._get_checkpoint(path, i, search=False)
+        logger.info('Agent saving to : {}'.format(filename))
         torch.save(self.qnetwork_local.state_dict(), filename)

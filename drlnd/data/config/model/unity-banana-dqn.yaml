@@ -3,7 +3,16 @@ env: "Banana.x86_64"
 agent:
     params:
         gamma: 0.99
-        learning_rate: 0.001
+        learning_rate: 5e-4
+        update_period: 1
+        target_update_factor: 0.05
+        target_update_period: 8
+        train_delay_step: 96
+        buffer_size: 512
+
+network:
+    params:
+        hidden : [64]
 
 train:
     num_episodes : 1800

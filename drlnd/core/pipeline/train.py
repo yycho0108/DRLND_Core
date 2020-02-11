@@ -14,7 +14,7 @@ from drlnd.core.common.ring_buffer import ContiguousRingBuffer
 from drlnd.core.common.logger import get_default_logger
 from drlnd.core.common.epsilon import ExponentialEpsilon, LinearEpsilon
 
-# from baselines.common.vec_env import SubprocVecEnv
+from baselines.common.vec_env import SubprocVecEnv
 
 logger = get_default_logger()
 
@@ -28,6 +28,7 @@ class TrainSettings(dict):
         self.directory = '/tmp/train-{}'.format(now)
         self.enabled = True
         self.load = ''
+        self.num_env = 0
         self.__dict__.update(kwargs)
         dict.__init__(self, self.__dict__)
 
@@ -38,13 +39,109 @@ class TrainSettings(dict):
         return self.__dict__.__repr__()
 
 
-def train(env: gym.Env, agent: AgentBase, settings: TrainSettings):
+def _crossed_boundary(value, increment, period):
+    return ((value + increment) // period) > (value // period)
+
+
+def train_multi(env: gym.Env, agent: AgentBase, settings: TrainSettings):
     # Initialize variables for logging.
     scores = ContiguousRingBuffer(capacity=128)
     max_avg_score = -np.inf
 
+    # Ensure settings.directory exists for logging / saving.
+    os.makedirs(settings.directory, exist_ok=True)
+    # Optionally load from existing checkpoint.
     if settings.load:
         agent.load(settings.load)
+
+    # Instantiate vectorized environment.
+    if isinstance(env, SubprocVecEnv):
+        # No further action is required.
+        pass
+    elif isinstance(env, gym.Env):
+        # Cannot
+        logger.error("Unable to broadcast single environment {}".format(env))
+    else:
+        # Assume that env is a constructor function.
+        env = SubprocVecEnv([env for _ in range(settings.num_env)])
+
+    # Initialize handlers for data collection.
+    total_rewards = np.zeros(settings.num_env, dtype=np.float32)
+    dones = np.zeros(settings.num_env, dtype=np.uint8)
+    states = env.reset()
+    # FIXME(yycho0108): EPS should be configurable.
+    # eps = LinearEpsilon(0.8 * settings.num_episodes)
+    eps = ExponentialEpsilon(0.99, 0.05, 0.8 * settings.num_episodes, True)
+
+    i_episode = 0
+    pbar = tqdm(total=settings.num_episodes)
+    while i_episode < settings.num_episodes:
+        # Reset the environments that are done, so that
+        # At each moment the agent is always dealing with a live-state.
+        # SubprocVecEnv.reset() does not allow granular control.
+        for s, d, e in zip(states, dones, env.remotes):
+            if not d:
+                continue
+            e.send(('reset', None))
+            s[:] = e.recv()
+        total_rewards[dones == True] = 0.0
+        dones[:] = False
+
+        # Process each state and interact with each env.
+        actions = agent.select_action(states, eps(i_episode))
+        next_states, rewards, dones, _ = env.step(actions)
+        agent.step(states, actions, rewards, next_states, dones)
+        total_rewards += rewards
+        states = next_states
+
+        # Increment episode counts accordingly.
+        num_done = dones.sum()
+        scores.extend(total_rewards[dones == True])
+        pbar.set_postfix(score=np.mean(scores.array))
+
+        # Optionally enable printing episode statistics.
+        # The logging happens at each crossing of the discretized log-period boundary.
+        if _crossed_boundary(i_episode, num_done, settings.log_period):
+            # Compute statistilcs.
+            avg_score = np.mean(scores.array)
+            if avg_score > max_avg_score:
+                max_avg_score = avg_score
+
+            # Print statistics.
+            logger.info("Episode {}/{} | Max Avg: {:.2f} | Eps : {:.2f}".format(
+                i_episode, settings.num_episodes, max_avg_score, eps(i_episode)))
+
+        # Save agent checkpoint as well.
+        if _crossed_boundary(i_episode, num_done, settings.save_period):
+            agent.save(settings.directory, i_episode + num_done)
+
+        i_episode += num_done
+        pbar.update(num_done)
+    pbar.close()
+
+    # Save results and return.
+    agent.save(settings.directory)
+    return scores
+
+
+def train_single(env: gym.Env, agent: AgentBase, settings: TrainSettings):
+    # Initialize variables for logging.
+    scores = ContiguousRingBuffer(capacity=128)
+    max_avg_score = -np.inf
+
+    # Ensure settings.directory exists for logging / saving.
+    os.makedirs(settings.directory, exist_ok=True)
+    # Optionally load from existing checkpoint.
+    if settings.load:
+        agent.load(settings.load)
+
+    # Instantiate vectorized environment.
+    if isinstance(env, gym.Env):
+        # No further action is required.
+        pass
+    else:
+        # Assume that env is a constructor function.
+        env = env()
 
     # FIXME(yycho0108): EPS should be configurable.
     # eps = LinearEpsilon(0.8 * settings.num_episodes)
@@ -90,8 +187,13 @@ def train(env: gym.Env, agent: AgentBase, settings: TrainSettings):
         if i_episode % settings.save_period == 0:
             agent.save(settings.directory, i_episode)
 
-    # Save results.
-    os.makedirs(settings.directory, exist_ok=True)
+    # Save results and return.
     agent.save(settings.directory)
-
     return scores
+
+
+def train(env: gym.Env, agent: AgentBase, settings: TrainSettings):
+    if settings.num_env > 1:
+        return train_multi(env, agent, settings)
+    else:
+        return train_single(env, agent, settings)

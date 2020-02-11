@@ -23,11 +23,16 @@ def main(cfg) -> None:
     if cfg.train.enabled:
         train_settings = TrainSettings(**cfg.train)
         logger.info(train_settings)
-        train(env, agent, train_settings)
+        if train_settings.num_env > 1:
+            def env_fn(): return gym.make(cfg.env)
+            train(env_fn, agent, train_settings)
+        else:
+            train(env, agent, train_settings)
 
     if cfg.test.enabled:
         test_settings = TestSettings(**cfg.test)
         logger.info(test_settings)
+        agent.load(test_settings.directory)
         test(env, agent, test_settings)
 
     env.close()
