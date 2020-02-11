@@ -16,6 +16,13 @@ def import_class(class_string: str):
     return getattr(module, class_name)
 
 
+def count_boundaries(value, offset, period):
+    """ Number of boundaries between value and value+offset """
+    i1 = (value + offset) // period
+    i0 = value // period
+    return i1 - i0
+
+
 def is_notebook():
     """
     Check if insite a notebook.

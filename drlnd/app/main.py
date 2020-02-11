@@ -33,7 +33,8 @@ def main(cfg) -> None:
         test_settings = TestSettings(**cfg.test)
         logger.info(test_settings)
         agent.load(test_settings.directory)
-        test(env, agent, test_settings)
+        scores = test(env, agent, test_settings)
+        logger.info('Test scores : {}'.format(scores))
 
     env.close()
 

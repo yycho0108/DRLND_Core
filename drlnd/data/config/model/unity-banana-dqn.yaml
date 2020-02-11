@@ -4,9 +4,9 @@ agent:
     params:
         gamma: 0.99
         learning_rate: 5e-4
-        update_period: 1
+        update_period: 8 # == num_env
         target_update_factor: 0.05
-        target_update_period: 8
+        target_update_period: 32 # == 4 * num_env
         train_delay_step: 96
         buffer_size: 512
 

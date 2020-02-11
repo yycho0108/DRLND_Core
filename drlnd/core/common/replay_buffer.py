@@ -42,8 +42,6 @@ class ReplayBuffer:
 
     def add(self, state, action, reward, next_state, done):
         """Add a new experience to memory."""
-        # for name in self.dtype.names:
-        #    self.memory[name].append(locals()[name])
         entry = np.array((state, action, reward, next_state, done),
                          dtype=self.dtype)
         self.memory.append(entry)
@@ -51,8 +49,6 @@ class ReplayBuffer:
 
     def extend(self, state, action, reward, next_state, done):
         """Add a new experience to memory."""
-        # for name in self.dtype.names:
-        #    self.memory[name].append(locals()[name])
         entry = np.empty(len(state), dtype=self.dtype)
         entry['state'] = state
         entry['action'] = action

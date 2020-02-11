@@ -9,7 +9,7 @@ import sys
 import functools
 from tqdm import tqdm, tnrange
 
-from drlnd.core.common.util import is_notebook
+from drlnd.core.common.util import is_notebook, count_boundaries
 from drlnd.core.agents.base_agent import AgentBase
 from drlnd.core.common.ring_buffer import ContiguousRingBuffer
 from drlnd.core.common.logger import get_default_logger
@@ -40,10 +40,6 @@ class TrainSettings(dict):
         return self.__dict__.__repr__()
 
 
-def _crossed_boundary(value, increment, period):
-    return ((value + increment) // period) > (value // period)
-
-
 def train_multi(env: gym.Env, agent: AgentBase, settings: TrainSettings):
     # Initialize variables for logging.
     scores = ContiguousRingBuffer(capacity=128)
@@ -64,7 +60,8 @@ def train_multi(env: gym.Env, agent: AgentBase, settings: TrainSettings):
         logger.error("Unable to broadcast single environment {}".format(env))
     else:
         # Assume that env is a constructor function.
-        env = SubprocVecEnv([functools.partial(env, i) for i in range(settings.num_env)])
+        env = SubprocVecEnv([functools.partial(env, i)
+                             for i in range(settings.num_env)])
 
     # Initialize handlers for data collection.
     total_rewards = np.zeros(settings.num_env, dtype=np.float32)
@@ -85,7 +82,9 @@ def train_multi(env: gym.Env, agent: AgentBase, settings: TrainSettings):
                 continue
             e.send(('reset', None))
             s[:] = e.recv()
+        scores.extend(total_rewards[dones == True])
         total_rewards[dones == True] = 0.0
+        num_done = dones.sum()
         dones[:] = False
 
         # Process each state and interact with each env.
@@ -96,13 +95,11 @@ def train_multi(env: gym.Env, agent: AgentBase, settings: TrainSettings):
         states = next_states
 
         # Increment episode counts accordingly.
-        num_done = dones.sum()
-        scores.extend(total_rewards[dones == True])
         pbar.set_postfix(score=np.mean(scores.array))
 
         # Optionally enable printing episode statistics.
         # The logging happens at each crossing of the discretized log-period boundary.
-        if _crossed_boundary(i_episode, num_done, settings.log_period):
+        if count_boundaries(i_episode, num_done, settings.log_period) > 0:
             # Compute statistilcs.
             avg_score = np.mean(scores.array)
             if avg_score > max_avg_score:
@@ -113,7 +110,7 @@ def train_multi(env: gym.Env, agent: AgentBase, settings: TrainSettings):
                 i_episode, settings.num_episodes, max_avg_score, eps(i_episode)))
 
         # Save agent checkpoint as well.
-        if _crossed_boundary(i_episode, num_done, settings.save_period):
+        if count_boundaries(i_episode, num_done, settings.save_period) > 0:
             agent.save(settings.directory, i_episode + num_done)
 
         i_episode += num_done
@@ -163,7 +160,7 @@ def train_single(env: gym.Env, agent: AgentBase, settings: TrainSettings):
         while not done:
             action = agent.select_action(state, eps(i_episode))
             next_state, reward, done, _ = env.step(action)
-            # NOTE(yycho0108): agent.step() traines the agent
+            # NOTE(yycho0108): agent.step() trains the agent.
             # FIXME(yycho0108): rename?
             agent.step(state, action, reward, next_state, done)
             total_reward += reward
