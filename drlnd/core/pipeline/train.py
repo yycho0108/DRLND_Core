@@ -6,6 +6,7 @@ import time
 import gym
 import json
 import sys
+import functools
 from tqdm import tqdm, tnrange
 
 from drlnd.core.common.util import is_notebook
@@ -63,7 +64,7 @@ def train_multi(env: gym.Env, agent: AgentBase, settings: TrainSettings):
         logger.error("Unable to broadcast single environment {}".format(env))
     else:
         # Assume that env is a constructor function.
-        env = SubprocVecEnv([env for _ in range(settings.num_env)])
+        env = SubprocVecEnv([functools.partial(env, i) for i in range(settings.num_env)])
 
     # Initialize handlers for data collection.
     total_rewards = np.zeros(settings.num_env, dtype=np.float32)

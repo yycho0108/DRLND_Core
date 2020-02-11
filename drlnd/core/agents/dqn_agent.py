@@ -118,7 +118,7 @@ class DQNAgent(AgentBase):
                           np.argmax(action_values.cpu().data.numpy(), axis=-1),
                           np.random.choice(self.action_size, size=batch_dim))
         if len(batch_dim) == 0:
-            action = np.squeeze(action, 0)
+            action = np.asscalar(np.squeeze(action, 0))
         return action
 
     def learn(self, experiences, gamma):

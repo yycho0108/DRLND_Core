@@ -16,6 +16,7 @@ network:
 
 train:
     num_episodes : 1800
+    num_env      : 8
     directory    : "."
     log_period   : 100
     enabled      : True

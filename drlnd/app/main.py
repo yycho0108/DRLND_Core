@@ -24,7 +24,7 @@ def main(cfg) -> None:
         train_settings = TrainSettings(**cfg.train)
         logger.info(train_settings)
         if train_settings.num_env > 1:
-            def env_fn(): return gym.make(cfg.env)
+            def env_fn(index): return gym.make(cfg.env)
             train(env_fn, agent, train_settings)
         else:
             train(env, agent, train_settings)
