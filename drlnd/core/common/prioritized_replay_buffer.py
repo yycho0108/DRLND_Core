@@ -8,18 +8,25 @@ from drlnd.core.common.ring_buffer import ContiguousRingBuffer
 
 @nb.njit()
 def _resample_wheel(weights: np.ndarray, size: int, max_weight: float, out: np.ndarray):
+    """
+    Roulette wheel sampling (from particle filter literature)
+    NlogN complexity: might really be better off using a sum tree
+    as described in the paper.
+    """
     n = len(weights)
-    weights = np.asarray(weights)
     index = np.random.randint(n)
-
-    beta = 0.0
-    if max_weight is None:
-        max_weight = weights.max()
-
     # Assuming n >> size,
     # take ~large steps to de-correlate output data.
     step = int(np.ceil(n / size))
 
+    # Ensure that visited memories will not be repeated.
+    # FIXME(yycho0108): In actuality, this fix may still not work.
+    # the objective here is to ensure that `step` is a number
+    # coprime to `n`, that will minimize the correlation of the output sample.
+    if n % step == 0:
+        step += 1
+
+    beta = 0.0
     for i in range(size):
         beta += np.random.random() * 2.0 * max_weight
         while beta > weights[index]:
@@ -29,16 +36,18 @@ def _resample_wheel(weights: np.ndarray, size: int, max_weight: float, out: np.n
 
 
 def resample_wheel(weights, size=1, max_weight=None, out=None):
+    # Allocate memory + compute cache if not provided.
     if out is None:
         out = np.empty(size, np.int32)
     if max_weight is None:
         max_weight = weights.max()
+    # Apply algorithm and return output.
     _resample_wheel(weights, size, max_weight, out)
     return out
 
 
 class PrioritizedReplayBuffer(object):
-    def __init__(self, state_size, action_size, buffer_size, batch_size, seed):
+    def __init__(self, state_size, action_size, buffer_size, batch_size, seed, alpha=0.6):
         """Initialize a ReplayBuffer object.
 
         Params
@@ -65,6 +74,7 @@ class PrioritizedReplayBuffer(object):
             capacity=buffer_size, dtype=self.dtype)
         self.batch_size = batch_size
         self.max_priority = 1.0
+        self.alpha = alpha
         self.fields = ['state', 'action', 'reward', 'next_state', 'done']
 
         # Manipulate random engine.
@@ -87,21 +97,33 @@ class PrioritizedReplayBuffer(object):
         entry['reward'] = reward
         entry['next_state'] = next_state
         entry['done'] = done
-        entry['priority'] = np.full(len(state), self.max_priority)
+        entry['priority'] = np.full(
+            len(state), self.max_priority ** self.alpha)
         self.memory.extend(entry)
         self.nadd += len(state)
 
-    def sample(self, indices=None):
+    def sample(self, indices: np.ndarray = None):
         """Randomly sample a batch of experiences from memory."""
         if indices is None:
-            indices = resample_wheel(self.memory['priority'], self.batch_size)
+            # FIXME(yycho0108): using max_priority here may not be accurate.
+            # Maintaining a heapq of priority may actually provide better results.
+            # However, in practice memory.max() == max_priority
+            # Due to the nature that Q values tend to grow over time.
+            # Perhaps this will lead to unexpected artifacts in sampling?
+            indices = resample_wheel(
+                self.memory['priority'], self.batch_size, self.max_priority ** self.alpha)
+            # indices = resample_wheel(self.memory['priority'], self.batch_size)
         out = [(self.memory[name][indices]) for name in self.fields]
         self.nquery += 1
         return out, indices
 
-    def update_priorities(self, indices, priorities):
+    def update_priorities(self, indices: np.ndarray, priorities: np.ndarray):
         """ Update priority """
+        # Update alpha factor to priorities to control
+        # Preference to uniform vs. prioritized sampling.
+        # (Assume `priorities` is not pre-exponentiated with `alpha`.)
         self.max_priority = max(self.max_priority, priorities.max())
+        priorities = priorities ** self.alpha
         self.memory['priority'][indices] = priorities
 
     def __len__(self):

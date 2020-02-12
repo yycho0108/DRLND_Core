@@ -12,6 +12,7 @@ from tqdm import tqdm, tnrange
 from drlnd.core.common.util import is_notebook, count_boundaries
 from drlnd.core.agents.base_agent import AgentBase
 from drlnd.core.common.ring_buffer import ContiguousRingBuffer
+from drlnd.core.common.prioritized_replay_buffer import PrioritizedReplayBuffer
 from drlnd.core.common.logger import get_default_logger
 from drlnd.core.common.epsilon import ExponentialEpsilon, LinearEpsilon
 
@@ -108,6 +109,9 @@ def train_multi(env: gym.Env, agent: AgentBase, settings: TrainSettings):
             # Print statistics.
             logger.info("Episode {}/{} | Max Avg: {:.2f} | Eps : {:.2f}".format(
                 i_episode, settings.num_episodes, max_avg_score, eps(i_episode)))
+            if isinstance(agent.memory,  PrioritizedReplayBuffer):
+                logger.info('mp : {} vs {}'.format(
+                    agent.memory.max_priority, agent.memory.memory.array['priority'].max()))
 
         # Save agent checkpoint as well.
         if count_boundaries(i_episode, num_done, settings.save_period) > 0:

@@ -110,9 +110,10 @@ class DQNAgent(AgentBase):
             experiences = [torch.from_numpy(e).to(
                 self.settings.device) for e in experiences]
             q_error = self.learn(experiences, self.settings.gamma)
-            with torch.no_grad():
-                new_priorities = q_error.abs_() + 1e-6
             if isinstance(self.memory,  PrioritizedReplayBuffer):
+                with torch.no_grad():
+                    # FIXME(yycho0108): 1e-6 -> kMinPriority?
+                    new_priorities = q_error.abs() + 1e-6
                 self.memory.update_priorities(
                     indices, new_priorities.cpu().numpy())
 
