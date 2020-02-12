@@ -12,6 +12,7 @@ import torch.optim as optim
 
 from drlnd.core.common.logger import get_default_logger
 from drlnd.core.common.replay_buffer import ReplayBuffer
+from drlnd.core.common.prioritized_replay_buffer import PrioritizedReplayBuffer
 from drlnd.core.agents.base_agent import AgentBase
 from drlnd.core.common.util import count_boundaries
 
@@ -71,7 +72,9 @@ class DQNAgent(AgentBase):
             self.qnetwork_local.parameters(), lr=self.settings.learning_rate)
 
         # Replay memory
-        self.memory = ReplayBuffer(
+        # self.memory = ReplayBuffer(
+        #    state_size, action_size, int(self.settings.buffer_size), self.settings.batch_size, self.settings.seed)
+        self.memory = PrioritizedReplayBuffer(
             state_size, action_size, int(self.settings.buffer_size), self.settings.batch_size, self.settings.seed)
         # Initialize time step (for updating every UPDATE_EVERY steps)
         self.t_step = 0
@@ -103,10 +106,15 @@ class DQNAgent(AgentBase):
         num_updates = count_boundaries(
             prev_step, step_size, self.settings.update_period)
         for _ in range(num_updates):
-            experiences = self.memory.sample()
+            experiences, indices = self.memory.sample()
             experiences = [torch.from_numpy(e).to(
                 self.settings.device) for e in experiences]
-            self.learn(experiences, self.settings.gamma)
+            q_error = self.learn(experiences, self.settings.gamma)
+            with torch.no_grad():
+                new_priorities = q_error.abs_() + 1e-6
+            if isinstance(self.memory,  PrioritizedReplayBuffer):
+                self.memory.update_priorities(
+                    indices, new_priorities.cpu().numpy())
 
         # Update target network similarly every `target_update_period` time steps.
         # Here, similar logic is applied to count the number of target updates.
@@ -172,6 +180,11 @@ class DQNAgent(AgentBase):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        # Separately return the error.
+        with torch.no_grad():
+            Q_error = Q_local - Q_target
+        return Q_error.squeeze(1)
 
     def soft_update(self, local_model, target_model, tau):
         """Soft update model parameters.
