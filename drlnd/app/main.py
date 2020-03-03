@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# PYTHON_ARGCOMPLETE_OK
 
 import os
 import gym
@@ -17,8 +18,13 @@ def main(cfg) -> None:
     logger = get_root_logger(level=logging.INFO)
 
     env = gym.make(cfg.env)
+    if isinstance(env.action_space, gym.spaces.Box):
+        action_size = env.action_space.shape
+    else:
+        action_size = env.action_space.n
+
     agent = hydra.utils.instantiate(
-        cfg.agent, env.observation_space.shape, env.action_space.n)
+        cfg.agent, env.observation_space.shape, action_size)
 
     if cfg.train.enabled:
         train_settings = TrainSettings(**cfg.train)

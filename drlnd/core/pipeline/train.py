@@ -82,7 +82,10 @@ def train_multi(env: gym.Env, agent: AgentBase, settings: TrainSettings):
             if not d:
                 continue
             e.send(('reset', None))
-            s[:] = e.recv()
+            # FIXME(yycho0108): Applying a reshape here as e.recv()
+            # Was seen to return a list for whatever reason.
+            # May silently allow an error to pass through.
+            s[:] = np.reshape(e.recv(), s.shape)
         scores.extend(total_rewards[dones == True])
         total_rewards[dones == True] = 0.0
         num_done = dones.sum()

@@ -1,6 +1,5 @@
 tqdm
 numpy
 gym
-hydra_core
 torch
 hydra
